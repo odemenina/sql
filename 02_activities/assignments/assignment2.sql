@@ -20,6 +20,9 @@ The `||` values concatenate the columns into strings.
 Edit the appropriate columns -- you're making two edits -- and the NULL rows will be fixed. 
 All the other rows will remain the same.) */
 
+SELECT 
+product_name || ', ' || COALESCE(product_size, ' ')|| ' (' || COALESCE(product_qty_type ,'unit')|| ')' AS product
+FROM product
 
 
 --Windowed Functions
@@ -32,17 +35,66 @@ each new market date for each customer, or select only the unique market dates p
 (without purchase details) and number those visits. 
 HINT: One of these approaches uses ROW_NUMBER() and one uses DENSE_RANK(). */
 
+--ROW_NUMBER
+SELECT 
+  customer_id
+  ,market_date
+  ,ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY market_date ASC) AS visit_number
+FROM customer_purchases 
+GROUP BY customer_id, market_date
+ORDER BY customer_id, market_date
 
+--DENSE_RANK 
+SELECT 
+  customer_id
+  ,market_date
+  ,DENSE_RANK() OVER(PARTITION BY customer_id  ORDER BY market_date ASC) AS visit_number
+FROM customer_purchases 
+ORDER BY customer_id,market_date
 
 /* 2. Reverse the numbering of the query from a part so each customer’s most recent visit is labeled 1, 
 then write another query that uses this one as a subquery (or temp table) and filters the results to 
 only the customer’s most recent visit. */
+
+--ROW_NUMBER
+SELECT * FROM
+(
+SELECT 
+  customer_id
+  ,market_date
+  ,ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY market_date DESC) AS visit_number
+FROM customer_purchases cp
+GROUP BY customer_id, market_date
+) x
+WHERE x.visit_number = 1
+ORDER BY cp.customer_id,market_date
+
+--DENSE_RANK
+SELECT * FROM
+(
+SELECT 
+  customer_id
+  ,market_date
+  ,DENSE_RANK() OVER (PARTITION BY customer_id ORDER BY market_date DESC) AS visit_number
+  FROM customer_purchases AS cp
+) x
+WHERE x.visit_number = 1
+ORDER BY customer_id, market_date
+
 
 
 
 /* 3. Using a COUNT() window function, include a value along with each row of the 
 customer_purchases table that indicates how many different times that customer has purchased that product_id. */
 
+-- Using a COUNT() window function
+SELECT 
+  customer_id
+  ,product_id
+  ,market_date
+ ,COUNT(product_id) OVER (PARTITION BY customer_id, product_id) as product_purchase_count
+FROM customer_purchases 
+GROUP BY customer_id, product_id, maarket_date
 
 
 -- String manipulations
@@ -57,11 +109,23 @@ Remove any trailing or leading whitespaces. Don't just use a case statement for 
 
 Hint: you might need to use INSTR(product_name,'-') to find the hyphens. INSTR will help split the column. */
 
-
+SELECT p.*, 
+CASE WHEN INSTR(product_name, '-') > 0
+THEN TRIM(SUBSTR(product_name, INSTR(product_name, '-') + 1 ))
+ELSE NULL
+END as description
+FROM product p
+ORDER BY product_id
 
 /* 2. Filter the query to show any product_size value that contain a number with REGEXP. */
 
-
+SELECT p.*, 
+CASE WHEN INSTR(product_name, '-') > 0
+THEN TRIM(SUBSTR(product_name, INSTR(product_name, '-') + 1 ))
+END as Description
+FROM product p
+WHERE product_size REGEXP '(lb|dozen|oz|lbs|''|")$'
+ORDER BY product_id
 
 -- UNION
 /* 1. Using a UNION, write a query that displays the market dates with the highest and lowest total sales.
@@ -72,6 +136,42 @@ HINT: There are a possibly a few ways to do this query, but if you're struggling
 "best day" and "worst day"; 
 3) Query the second temp table twice, once for the best day, once for the worst day, 
 with a UNION binding them. */
+
+--return market_date, sum purchase per day from customer_purchases and put into new_customer_purchases
+DROP TABLE IF EXISTS temp.new_customer_purchases;
+CREATE TABLE temp.new_customer_purchases AS
+SELECT 
+	market_date
+	,SUM(quantity*cost_to_customer_per_qty) as total_sales
+FROM customer_purchases cp
+GROUP BY market_date
+ORDER BY total_sales DESC
+
+--select MAX total_sales total_sales for the 'best day' and  MIN total_sales for the 'worst day' total_sales where rank =  1
+SELECT * FROM 
+(
+    SELECT 
+    MAX(total_sales) as total_sales, 
+    market_date, 
+	'best day' as note,
+    RANK () OVER (ORDER BY total_sales DESC) as rank
+    FROM new_customer_purchases
+    GROUP BY market_date
+    ORDER BY total_sales DESC 
+)x
+WHERE rank =  1
+UNION ALL
+SELECT * FROM 
+  (
+    SELECT 
+    MIN(total_sales) as total_sales, 
+    market_date, 'worst day' as note,
+    RANK () OVER (ORDER BY total_sales ASC) as rank
+    FROM new_customer_purchases
+    GROUP BY market_date
+    ORDER BY total_sales ASC 
+)x
+WHERE rank =  1
 
 
 
@@ -97,17 +197,64 @@ This table will contain only products where the `product_qty_type = 'unit'`.
 It should use all of the columns from the product table, as well as a new column for the `CURRENT_TIMESTAMP`.  
 Name the timestamp column `snapshot_timestamp`. */
 
+SELECT vendor_name,
+        product_name,  
+	original_price,
+	SUM(money_paid) as money_paid
+FROM
+   (
+      SELECT DISTINCT
+	vendor_name,
+        product_name,
+        original_price,
+       (original_price * 5) as money_paid
+		
+       FROM 
+       vendor_inventory vi
+       JOIN product p ON vi.product_id =  p.product_id
+       JOIN vendor v ON vi.vendor_id =  v.vendor_id
+     ) x
+     CROSS JOIN 
+      (SELECT  DISTINCT customer_id
+       FROM customer)
+     GROUP BY vendor_name, product_name
+
+
 
 
 /*2. Using `INSERT`, add a new row to the product_units table (with an updated timestamp). 
 This can be any product you desire (e.g. add another record for Apple Pie). */
 
 
+DROP TABLE IF EXISTS product_units
+CREATE TABLE product_units AS
+ SELECT p.*,
+ CURRENT_TIMESTAMP AS snapshot_timestamp
+ FROM product AS p
+ WHERE product_qty_type = 'unit'
+ 
+ --select * from product_units order by product_id
+ INSERT INTO product_units (product_id, product_name,  product_size, product_category_id, product_qty_type, snapshot_timestamp)
+ VALUES(24, 'Apple Pie', '10"', '3', 'unit', CURRENT_TIMESTAMP) 
+
 
 -- DELETE
 /* 1. Delete the older record for the whatever product you added. 
 
 HINT: If you don't specify a WHERE clause, you are going to have a bad time.*/
+WITH double_record AS
+(SELECT product_id
+    FROM product_units 
+    WHERE product_id = 24)
+
+DELETE FROM product_units
+WHERE 
+(
+product_id =  (SELECT  product_id 
+               FROM double_record
+    )
+)
+
 
 
 
@@ -127,6 +274,25 @@ Third, SET current_quantity = (...your select statement...), remembering that WH
 Finally, make sure you have a WHERE statement to update the right row, 
 	you'll need to use product_units.product_id to refer to the correct row within the product_units table. 
 When you have all of these components, you can run the update statement. */
+
+ALTER TABLE product_units
+ADD current_quantity INT;
+	
+UPDATE product_units 
+SET current_quantity = 
+  (SELECT current_quantity
+   FROM
+    (
+      SELECT pu.product_id, COALESCE(quantity,0) as current_quantity, rank
+      FROM product_units pu
+      LEFT JOIN
+      (SELECT vi.*,
+      ROW_NUMBER() OVER(PARTITION BY vi.product_id ORDER BY market_date DESC) as rank
+      FROM vendor_inventory vi) x
+      ON pu.product_id =  x.product_id
+      WHERE rank = 1) x
+    WHERE product_units.product_id =  x.product_id)
+
 
 
 
