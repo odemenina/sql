@@ -1,6 +1,6 @@
 # Assignment 2: Design a Logical Model and Advanced SQL
 
-🚨 **Please review our [Assignment Submission Guide](https://github.com/UofT-DSI/onboarding/blob/main/onboarding_documents/submissions.md)** 🚨 for detailed instructions on how to format, branch, and submit your work. Following these guidelines is crucial for your submissions to be evaluated correctly.
+🚨 **Please review our [Assignment Submission Guide](d)https://github.com/UofT-DSI/onboarding/blob/main/onboarding_documents/submissions.m** 🚨 for detailed instructions on how to format, branch, and submit your work. Following these guidelines is crucial for your submissions to be evaluated correctly.
 
 #### Submission Parameters:
 * Submission Due Date: `December 22, 2024`
@@ -14,10 +14,10 @@
     * Open a private window in your browser. Copy and paste the link to your pull request into the address bar. Make sure you can see your pull request properly. This helps the technical facilitator and learning support staff review your submission easily.
 
 Checklist:
-- [ ] Create a branch called `assignment-two`.
-- [ ] Ensure that the repository is public.
-- [ ] Review [the PR description guidelines](https://github.com/UofT-DSI/onboarding/blob/main/onboarding_documents/submissions.md#guidelines-for-pull-request-descriptions) and adhere to them.
-- [ ] Verify that the link is accessible in a private browser window.
+- [x] Create a branch called `assignment-two`.
+- [x] Ensure that the repository is public.
+- [x] Review [the PR description guidelines](https://github.com/UofT-DSI/onboarding/blob/main/onboarding_documents/submissions.md#guidelines-for-pull-request-descriptions) and adhere to them.
+- [x] Verify that the link is accessible in a private browser window.
 
 If you encounter any difficulties or have questions, please don't hesitate to reach out to our team via our Slack at `#cohort-5-help`. Our Technical Facilitators and Learning Support staff are here to help you navigate any challenges.
 
@@ -44,19 +44,26 @@ Additionally, include a date table.
 There are several tools online you can use, I'd recommend [Draw.io](https://www.drawio.com/) or [LucidChart](https://www.lucidchart.com/pages/).
 
 **HINT:** You do not need to create any data for this prompt. This is a conceptual model only. 
-
+![alt text](<Bookstore logical diagram_prompt_1.jpeg>)
 #### Prompt 2
 We want to create employee shifts, splitting up the day into morning and evening. Add this to the ERD.
-
+![alt text](<Bookstore logical diagram_prompt_ 2.jpeg>)
 #### Prompt 3
 The store wants to keep customer addresses. Propose two architectures for the CUSTOMER_ADDRESS table, one that will retain changes, and another that will overwrite. Which is type 1, which is type 2? 
 
+    
+
+
 **HINT:** search type 1 vs type 2 slowly changing dimensions. 
 
-```
 Your answer...
-```
+``Type 1 Slowly Changing Dimension: This method overwrites the existing value with the new value and does not retain history.
+Into the 02_activities/assignments/Bookstore logical diagram_prompt_3_type_1.jpeg the first approach used an additional column  customer_previous_address in the table 'customer',
+which one is filled in if the customer_address column is updated or changed.
 
+
+Type 2 Slowly Changing Dimension: This method adds a new row for the new value and maintains the existing row for historical and reporting purposes.
+The second approach is to add table 'customer_address'. Please see the 02_activities/assignments/Bookstore logical diagram_prompt_3_type_2.jpeg. This table included columns 'customer_address'(actually it might be more than one column, for example something as 'street, town, province, country' columns, but for the convenience for the particular model we used just one column 'customer_address' where information will be added in one line). Also there are columns start_date and closed_date , as well as a current_status flag that determines the active record as the moment.
 ***
 
 ## Section 2:
